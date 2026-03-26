@@ -256,4 +256,3 @@ int main() {
 }
 
 
->>>>>>> 00bce5b (Połączenie lokalnego kodu z GitHubem)
