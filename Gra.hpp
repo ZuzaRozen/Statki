@@ -1,8 +1,9 @@
-﻿#ifndef GRA_HPP
+#ifndef GRA_HPP
 #define GRA_HPP
 //jakimś cudem to jest header file?
 #include <vector>
 #include <string>
+#include <iostream>
 using namespace std;
 
 class Statek {
@@ -17,24 +18,30 @@ public:
 
 class Plansza {
 private:
-    const int r = 11;
-    std::vector<std::vector<char>> pola;
-    std::vector<Statek> statki;
+    vector<vector<char>> pola;
+    vector<Statek> statki;
 
-    int losuj_wsp() { return 1 + rand() % 10; }
+    int losuj_wsp(int r) { return 1 + rand() % (r-1); }
     int losuj_zwrot() { return rand() % 2; }
 
-    void umiescStatki() {
+    void umiescStatki(int rozmiarPlanszy) {
         int schemat[] = { 4, 3, 3, 2, 2, 2, 1, 1, 1, 1 };
-        for (int s : schemat) ustawStatek(s);
+        for (int s : schemat) ustawStatek(s, rozmiarPlanszy);
+    }
+
+    void umiescStatkiDemo(int rozmiarPlanszy) {
+        int schemat[] = { 2, 1, 1 };
+        for (int s : schemat) ustawStatek(s, rozmiarPlanszy);
     }
 
 public:
-    Plansza(bool generuj = false) : pola(r, std::vector<char>(r, 'X')) {
+    Plansza(bool generuj, int rozmiarPlanszy) : pola(rozmiarPlanszy, vector<char>(rozmiarPlanszy, 'X')) {
         pola[0][0] = ' ';
-        for (int i = 1; i < 11; i++) pola[0][i] = (char)(i + 64);
-        for (int i = 1; i < 11; i++) pola[i][0] = (char)(i + 47);   
-        if (generuj) umiescStatki();
+        //cout << rozmiarPlanszy;
+        for (int i = 1; i < rozmiarPlanszy; i++) pola[0][i] = (char)(i + 64);
+        for (int i = 1; i < rozmiarPlanszy; i++) pola[i][0] = (char)(i + 47);
+        if (generuj && rozmiarPlanszy == 11) umiescStatki(rozmiarPlanszy);
+        if (generuj && rozmiarPlanszy != 11) umiescStatkiDemo(rozmiarPlanszy);
     }
 
     char getPole(int w, int k) const { return pola[w][k]; }
@@ -65,24 +72,24 @@ public:
         pola[wiersz][kol] = 'o';
     }
 
-    void wyczyscPlansze() {
-        for (int i = 1; i < 11; i++) {
-            for (int j = 1; j < 11; j++) {
+    void wyczyscPlansze(int rozmiarPlanszy) {
+        for (int i = 1; i < rozmiarPlanszy; i++) {
+            for (int j = 1; j < rozmiarPlanszy; j++) {
                 pola[i][j] = 'X';
             }
         }
     }
 
-    bool poprawnieUstawione() {
-        vector<vector<bool>> odwiedzone(11, vector<bool>(11, false));
+    bool poprawnieUstawione(int rozmiarPlanszy) {
+        vector<vector<bool>> odwiedzone(rozmiarPlanszy, vector<bool>(rozmiarPlanszy, false));
         vector<int> znalezioneStatki; //rozmiary znalezionych statkow
 
-        for (int i = 1; i <= 10; i++) {
-            for (int j = 1; j <= 10; j++) {
+        for (int i = 1; i < rozmiarPlanszy; i++) {
+            for (int j = 1; j < rozmiarPlanszy; j++) {
                 //jeśli pole jeszcze nieodwiedzone
                 if (pola[i][j] == 'o' && !odwiedzone[i][j]) {
                     int rozmiar = 0;
-                    if (!liczRozmiarStatku(i, j, odwiedzone, rozmiar)) return false; //błąd, gdy ma sąsiada na rogu
+                    if (!liczRozmiarStatku(i, j, odwiedzone, rozmiar, rozmiarPlanszy)) return false; //błąd, gdy ma sąsiada na rogu
                     znalezioneStatki.push_back(rozmiar);
                 }
             }
@@ -91,28 +98,43 @@ public:
         // Czy odpowiednia ilosc statków
         // 1x4, 2x3, 3x2, 4x1
         int s1 = 0, s2 = 0, s3 = 0, s4 = 0;
-        for (int s : znalezioneStatki) {
-            if (s == 1) s1++;
-            else if (s == 2) s2++;
-            else if (s == 3) s3++;
-            else if (s == 4) s4++;
-            else return false; 
+        if (rozmiarPlanszy == 11) {
+            for (int s : znalezioneStatki) {
+                if (s == 1) s1++;
+                else if (s == 2) s2++;
+                else if (s == 3) s3++;
+                else if (s == 4) s4++;
+                else return false;
+            }
+            return (s4 == 1 && s3 == 2 && s2 == 3 && s1 == 4);
         }
+        if (rozmiarPlanszy == 6) {
+            for (int s : znalezioneStatki) {
+                if (s == 1) s1++;
+                else if (s == 2) s2++;
+                else return false;
+            }
+            return (s2 == 1 && s1 == 2);
 
-        return (s4 == 1 && s3 == 2 && s2 == 3 && s1 == 4);
+        }
     }
 
-    bool maSasiadowSkos(int w, int k) {
+    bool maSasiadowSkos(int w, int k, int rozmiarPlanszy) {
         for (int dw = -1; dw <= 1; dw+=2) {
             for (int dk = -1; dk <= 1; dk+=2) {
                 int sw = w + dw, sk = k + dk;
-                if (sw >= 1 && sw <= 10 && sk >= 1 && sk <= 10 && pola[sw][sk] == 'o') return true;
+                if (sw >= 1 && sw < rozmiarPlanszy && sk >= 1 && sk < rozmiarPlanszy && pola[sw][sk] == 'o') return true;
             }
         }
         return false;
     }
 
-    bool zaDuzoRozmiaru(int w, int k) {
+    bool zaDuzoRozmiaru(int w, int k, int rozmiarPlanszy) {
+        if (rozmiarPlanszy == 11) return zaDuzoRozmiaru10(w, k);
+        else return zaDuzoRozmiaruDemo(w, k);
+    }
+
+    bool zaDuzoRozmiaru10(int w, int k) {
         vector<vector<char>> kopiaPol = pola;
         kopiaPol[w][k] = 'o'; // udawany statek
 
@@ -123,7 +145,7 @@ public:
             for (int j = 1; j <= 10; j++) {
                 if (kopiaPol[i][j] == 'o' && !odwiedzone[i][j]) {
                     int rozmiar = 0;
-                    if (!liczRozmiarNaKopii(i, j, odwiedzone, rozmiar, kopiaPol)) return true;
+                    if (!liczRozmiarNaKopii(i, j, odwiedzone, rozmiar, kopiaPol, 11)) return true;
 
                     if (rozmiar == 1) s1++;
                     else if (rozmiar == 2) s2++;
@@ -134,7 +156,7 @@ public:
             }
         }
 
-        if (s4 > 1 || s3+s4 > 3 || s4+s3+s2 >6  || s4 + s3 + s2 + s1 > 10) return true;
+        if (s4 > 1 || s3 + s4 > 3 || s4 + s3 + s2 > 6 || s4 + s3 + s2 + s1 > 10) return true;
 
         int sumaMasztow = s4 * 4 + s3 * 3 + s2 * 2 + s1 * 1;
         if (sumaMasztow > 20) return true;      //może zbędne
@@ -142,10 +164,39 @@ public:
         return false;
     }
 
+    bool zaDuzoRozmiaruDemo(int w, int k) {
+        vector<vector<char>> kopiaPol = pola;
+        kopiaPol[w][k] = 'o'; // udawany statek
+
+        vector<vector<bool>> odwiedzone(6, vector<bool>(6, false));
+        int s1 = 0, s2 = 0;
+
+        for (int i = 1; i < 6; i++) {
+            for (int j = 1; j < 6; j++) {
+                if (kopiaPol[i][j] == 'o' && !odwiedzone[i][j]) {
+                    int rozmiar = 0;
+                    if (!liczRozmiarNaKopii(i, j, odwiedzone, rozmiar, kopiaPol, 6)) return true; //dostosowac
+
+                    if (rozmiar == 1) s1++;
+                    else if (rozmiar == 2) s2++;
+                    else return true; //za duzy
+                }
+            }
+        }
+
+        if (s2 > 1 ||  s2 + s1 > 3) return true;
+
+        int sumaMasztow = s2 * 2 + s1 * 1;
+        if (sumaMasztow > 4) return true;      //może zbędne
+
+        return false;
+    }
+
 private:
     private:
-        bool liczRozmiarNaKopii(int w, int k, vector<vector<bool>>& odwiedzone, int& rozmiar, const vector<vector<char>>& kopia) {
-            if (w < 1 || w > 10 || k < 1 || k > 10 || kopia[w][k] != 'o' || odwiedzone[w][k]) return true;
+        bool liczRozmiarNaKopii(int w, int k, vector<vector<bool>>& odwiedzone, int& rozmiar, 
+            const vector<vector<char>>& kopia, int rozmiarPlanszy) {
+            if (w < 1 || w > rozmiarPlanszy-1 || k < 1 || k > rozmiarPlanszy - 1 || kopia[w][k] != 'o' || odwiedzone[w][k]) return true;
 
             odwiedzone[w][k] = true;
             rozmiar++;
@@ -155,20 +206,20 @@ private:
                 for (int dk = -1; dk <= 1; dk++) {
                     if (dw == 0 && dk == 0) continue;
                     int nw = w + dw, nk = k + dk;
-                    if (nw >= 1 && nw <= 10 && nk >= 1 && nk <= 10 && kopia[nw][nk] == 'o' && !odwiedzone[nw][nk]) {
+                    if (nw >= 1 && nw < rozmiarPlanszy && nk >= 1 && nk < rozmiarPlanszy && kopia[nw][nk] == 'o' && !odwiedzone[nw][nk]) {
                         if (abs(dw) + abs(dk) == 2) return false;
                     }
                 }
             }
-
-            return liczRozmiarNaKopii(w + 1, k, odwiedzone, rozmiar, kopia) &&
-                liczRozmiarNaKopii(w - 1, k, odwiedzone, rozmiar, kopia) &&
-                liczRozmiarNaKopii(w, k + 1, odwiedzone, rozmiar, kopia) &&
-                liczRozmiarNaKopii(w, k - 1, odwiedzone, rozmiar, kopia);
+            
+            return liczRozmiarNaKopii(w + 1, k, odwiedzone, rozmiar, kopia, rozmiarPlanszy) &&
+                liczRozmiarNaKopii(w - 1, k, odwiedzone, rozmiar, kopia, rozmiarPlanszy) &&
+                liczRozmiarNaKopii(w, k + 1, odwiedzone, rozmiar, kopia, rozmiarPlanszy) &&
+                liczRozmiarNaKopii(w, k - 1, odwiedzone, rozmiar, kopia, rozmiarPlanszy);
         }
 
-    bool liczRozmiarStatku(int w, int k, vector<vector<bool>>& odwiedzone, int& rozmiar) {
-        if (w < 1 || w > 10 || k < 1 || k > 10 || pola[w][k] != 'o' || odwiedzone[w][k]) return true;
+    bool liczRozmiarStatku(int w, int k, vector<vector<bool>>& odwiedzone, int& rozmiar, int rozmiarPlanszy) {
+        if (w < 1 || w > rozmiarPlanszy-1 || k < 1 || k > rozmiarPlanszy-1 || pola[w][k] != 'o' || odwiedzone[w][k]) return true;
 
         odwiedzone[w][k] = true;
         rozmiar++;
@@ -179,7 +230,7 @@ private:
                 if (dw == 0 && dk == 0) continue;
                 int nw = w + dw;
                 int nk = k + dk;
-                if (nw >= 1 && nw <= 10 && nk >= 1 && nk <= 10 && pola[nw][nk] == 'o' && !odwiedzone[nw][nk]) {
+                if (nw >= 1 && nw < rozmiarPlanszy && nk >= 1 && nk < rozmiarPlanszy && pola[nw][nk] == 'o' && !odwiedzone[nw][nk]) {
                     //jeśli tak, to błąd
                     if (abs(dw) + abs(dk) == 2) return false;
                 }
@@ -187,35 +238,35 @@ private:
         }
 
         //szukaj statku góra/dół/lewo/prawo
-        if (!liczRozmiarStatku(w + 1, k, odwiedzone, rozmiar)) return false;
-        if (!liczRozmiarStatku(w - 1, k, odwiedzone, rozmiar)) return false;
-        if (!liczRozmiarStatku(w, k + 1, odwiedzone, rozmiar)) return false;
-        if (!liczRozmiarStatku(w, k - 1, odwiedzone, rozmiar)) return false;
+        if (!liczRozmiarStatku(w + 1, k, odwiedzone, rozmiar, rozmiarPlanszy)) return false;
+        if (!liczRozmiarStatku(w - 1, k, odwiedzone, rozmiar, rozmiarPlanszy)) return false;
+        if (!liczRozmiarStatku(w, k + 1, odwiedzone, rozmiar, rozmiarPlanszy)) return false;
+        if (!liczRozmiarStatku(w, k - 1, odwiedzone, rozmiar, rozmiarPlanszy)) return false;
 
         return true;
     }
 
-    bool moznaPostawic(int w, int k, int rozmiar, int zwrot) {
+    bool moznaPostawic(int w, int k, int rozmiar, int zwrot, int rozmiarPlanszy) {
         for (int i = 0; i < rozmiar; i++) {
             int w_spr = (zwrot == 1) ? w + i : w;
             int k_spr = (zwrot == 0) ? k + i : k;
-            if (w_spr < 1 || w_spr > 10 || k_spr < 1 || k_spr > 10 || pola[w_spr][k_spr] != 'X') return false;
+            if (w_spr < 1 || w_spr > rozmiarPlanszy-1 || k_spr < 1 || k_spr > rozmiarPlanszy-1 || pola[w_spr][k_spr] != 'X') return false;
 
             for (int dw = -1; dw <= 1; dw++) {
                 for (int dk = -1; dk <= 1; dk++) {
                     int sw = w_spr + dw, sk = k_spr + dk;
-                    if (sw >= 1 && sw <= 10 && sk >= 1 && sk <= 10 && pola[sw][sk] == 'o') return false;
+                    if (sw >= 1 && sw < rozmiarPlanszy && sk >= 1 && sk < rozmiarPlanszy && pola[sw][sk] == 'o') return false;
                 }
             }
         }
         return true;
     }
 
-    void ustawStatek(int rozmiar) {
+    void ustawStatek(int rozmiar, int rozmiarPlanszy) {
         bool ustawiony = false;
         while (!ustawiony) {
-            int w = losuj_wsp(), k = losuj_wsp(), z = losuj_zwrot();
-            if (moznaPostawic(w, k, rozmiar, z)) {
+            int w = losuj_wsp(rozmiarPlanszy), k = losuj_wsp(rozmiarPlanszy), z = losuj_zwrot();
+            if (moznaPostawic(w, k, rozmiar, z, rozmiarPlanszy)) {
                 Statek nowy(rozmiar);
                 for (int i = 0; i < rozmiar; i++) {
                     int wr = (z == 1) ? w + i : w, kl = (z == 0) ? k + i : k;
@@ -233,6 +284,7 @@ private:
 
 class Gra {
 public:
+    int r;
     Plansza kompUkr;
     Plansza kompPok;
     Plansza PlanszaUzytkownika;
@@ -241,11 +293,20 @@ public:
     bool koniec;
     bool gotowa;
     bool wygrana=0;
-    //const int maksPudel = 45;
-    const int celTrafien = 20;
+    int celTrafien;
     bool pierwszyStrzal = 1;
 
-    Gra() : kompUkr(true), kompPok(), PlanszaUzytkownika(), trafienia(0), pudla(0), koniec(false), gotowa(false) {}
+
+    Gra(int rozmiar, int cel) :
+        r(rozmiar),
+        celTrafien(cel), 
+        kompUkr(true, rozmiar),
+        kompPok(false, rozmiar),
+        PlanszaUzytkownika(false, rozmiar),
+        trafienia(0),
+        pudla(0), 
+        koniec(false),
+        gotowa(false) {}
 
     /*bool poprawnyStrzal(int w, int k) {
         if (kompPok.czyJuzStrzelano(w, k)) return false;
@@ -273,8 +334,8 @@ public:
     pair<int, int> analizujPlansze() {
         int w, k;
         do {
-            w = 1 + rand() % 10;
-            k = 1 + rand() % 10;
+            w = 1 + rand() % (r - 1);
+            k = 1 + rand() % (r - 1);
         } while (PlanszaUzytkownika.getPole(w, k) == '*' ||
             PlanszaUzytkownika.getPole(w, k) == 'z');
         return make_pair(w, k);
@@ -286,8 +347,8 @@ public:
         int w, k;
         if (pierwszyStrzal) {
             do {
-                w = 1 + rand() % 10;
-                k = 1 + rand() % 10;
+                w = 1 + rand() % (r-1);
+                k = 1 + rand() % (r - 1);
             } while (PlanszaUzytkownika.getPole(w, k) == '*' ||
                 PlanszaUzytkownika.getPole(w, k) == 'z');
         }
